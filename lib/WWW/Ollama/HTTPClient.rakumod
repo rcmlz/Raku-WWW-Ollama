@@ -8,41 +8,9 @@ use WWW::Ollama::Utilities;
 class WWW::Ollama::HTTPClient {
     has Str $.host is rw;
     has Int $.port is rw;
-    has IO::Path $.curl-path is rw = WWW::Ollama::Utilities::find-in-path($*DISTRO.is-win ?? 'curl.exe' !! 'curl');
 
     method host-port() { "$!host:$!port" }
     method base-url()  { "http://{self.host-port}" }
-
-    method !request-curl(Str $method, Str $path, %options = {}) {
-        my %opts = %options;
-        %opts<headers> //= {};
-        my $curl = $.curl-path // WWW::Ollama::Utilities::find-in-path($*DISTRO.is-win ?? 'curl.exe' !! 'curl');
-        return { status => 599, reason => 'curl not found', content => '' } unless $curl;
-        my @cmd = $curl.Str, '-sS', '-w', '"\n%{http_code}"', '-X', $method, self.base-url ~ $path;
-        for %opts<headers>.kv -> $k, $v {
-            @cmd.push('-H', "$k: $v");
-        }
-        if %opts<content> {
-            @cmd.push('-d', %opts<content>);
-        }
-        my $proc = run |@cmd, :out, :err, :bin;
-        my $out = $proc.out.slurp.decode;
-        my $err = $proc.err.slurp.decode;
-        my @lines = $out.lines;
-        my $status = @lines.pop // 0;
-        my $content = @lines.join("\n");
-        my %res = (
-        status  => $status.Int,
-        reason  => $err,
-        content => $content,
-        );
-        %res<decoded-content> = try { from-json($content) } if $content.chars;
-        %res;
-    }
-
-    method !request(Str $method, Str $path, %options = {}) {
-
-    }
 
     #------------------------------------------------------
     # API methods
@@ -52,7 +20,9 @@ class WWW::Ollama::HTTPClient {
         my %res = $response;
         if $response<success> {
             my $json-string = $response<content>.decode;
-            $json-string = try from-json($json-string);
+            try {
+                $json-string = from-json($json-string);
+            }
             if $! { $json-string = {'response' => $json-string} }
             %res<decoded-content> = $json-string;
         } else {
