@@ -1,0 +1,47 @@
+{
+    "name": "WWW::Ollama",
+    "description": "WWW::Ollama provides access to the Ollama models (https://ollama.com).",
+    "version": "0.0.1",
+    "authors": [
+        "Anton Antonov"
+    ],
+    "auth": "zef:antononcube",
+    "depends": [
+        "HTTP::Tiny:ver<0.2.5+>",
+        "JSON::Fast:ver<0.17+>",
+        "MIME::Base64:ver<1.2.3+>:auth<zef:raku-community-modules>",
+        "Image::Markup::Utilities:ver<0.1.0+>:auth<zef:antononcube>",
+        "IO::Socket::SSL:ver<0.0.2+>",
+        "paths:ver<10.1>"
+    ],
+    "build-depends": [],
+    "test-depends": [
+        "Image::Markup::Utilities:ver<0.1.1+>"
+    ],
+    "provides": {
+        "WWW::Ollama": "lib/WWW/Ollama.rakumod",
+        "WWW::Ollama::Client": "lib/WWW/Ollama/Client.rakumod",
+        "WWW::Ollama::Config": "lib/WWW/Ollama/Config.rakumod",
+        "WWW::Ollama::ExecResolver": "lib/WWW/Ollama/ExecResolver.rakumod",
+        "WWW::Ollama::HTTPClient": "lib/WWW/Ollama/HTTPClient.rakumod",
+        "WWW::Ollama::ProcessManager": "lib/WWW/Ollama/ProcessManager.rakumod",
+        "WWW::Ollama::RequestNormalizer": "lib/WWW/Ollama/RequestNormalizer.rakumod",
+        "WWW::Ollama::StreamingParser": "lib/WWW/Ollama/StreamingParser.rakumod",
+        "WWW::Ollama::Utilities": "lib/WWW/Ollama/Utilities.rakumod"
+    },
+    "license": "Artistic-2.0",
+    "tags": [
+        "ai",
+        "api",
+        "client",
+        "llm",
+        "large language model",
+        "generative art",
+        "generative",
+        "ollama",
+        "web service",
+        "web"
+    ],
+    "api": "0",
+    "source-url": "https://github.com/antononcube/Raku-WWW-Ollama"
+}

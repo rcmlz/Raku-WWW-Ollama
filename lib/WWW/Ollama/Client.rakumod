@@ -1,0 +1,227 @@
+
+use JSON::Fast;
+use MIME::Base64;
+use WWW::Ollama::Config;
+use WWW::Ollama::HTTPClient;
+use WWW::Ollama::ExecResolver;
+use WWW::Ollama::RequestNormalizer;
+use WWW::Ollama::StreamingParser;
+use WWW::Ollama::ProcessManager;
+
+# Public client facade.
+class WWW::Ollama::Client {
+    has WWW::Ollama::Config $.config;
+    has WWW::Ollama::HTTPClient $.http;
+    has WWW::Ollama::ExecResolver $.resolver;
+    has WWW::Ollama::RequestNormalizer $.normalizer;
+    has WWW::Ollama::StreamingParser $.parser .= new;
+    has WWW::Ollama::ProcessManager $.process;
+
+    submethod BUILD(:$host, :$port, :$use-system-ollama, :$start-ollama) {
+        $!config //= WWW::Ollama::Config.new;
+        $!config.set({'host' => $host}) if $host;
+        $!config.set({'port' => $port}) if $port.defined;
+        $!config.set({'use-system-ollama' => $use-system-ollama}) if $use-system-ollama.defined;
+        $!config.set({'start-ollama' => $start-ollama}) if $start-ollama.defined;
+
+        note (:$!config);
+        $!http //= WWW::Ollama::HTTPClient.new(
+            host => $!config.get('host', '127.0.0.1'),
+            port => $!config.get('port', 11435),
+        );
+        note (:$!http);
+        $!resolver //= WWW::Ollama::ExecResolver.new(:$!config);
+        $!normalizer //= WWW::Ollama::RequestNormalizer.new(:$!http);
+        $!process //= WWW::Ollama::ProcessManager.new(
+            :$!resolver,
+            :$!http,
+            start-on-missing => $!config.get('start-ollama', True),
+            context-length   => $!config.get('context-length'),
+        );
+    }
+
+    multi method host() { $!http.host }
+    multi method host(Str $value) {
+        $!http.host = $value;
+        $!config.set(host => $value);
+    }
+
+    multi method port() { $!http.port }
+    multi method port(Int $value) {
+        $!http.port = $value;
+        $!config.set(port => $value);
+    }
+
+    multi method use-system-ollama() { $!resolver.use-system }
+    multi method use-system-ollama(Bool $value) { $!config.set('use-system-ollama' => $value) }
+
+    method ollama-running() { $!process.running }
+    method ensure-ollama-running(:$use-system) { $!process.ensure-running(:$use-system) }
+    method start(:$use-system) { $!process.start(:$use-system) }
+    method stop() { $!process.stop }
+
+    # API wrappers
+    method status(:$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        $!http.get('/api/ps');
+    }
+
+    method list-models(:$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %res = $!http.get('/api/tags');
+        self.shape-response('models', %res);
+    }
+
+    method model-info(Str :$model!, :$verbose = False, :$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %res = $!http.post('/api/show', { model => $model, verbose => $verbose });
+        self.shape-response('model-info', %res);
+    }
+
+    method pull-model(Str :$model!, :$stream = False, :$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %payload = :$model, :$stream;
+        if $stream {
+            my $call = self.call-id('pull');
+            return $!parser.parse($!http.post-stream('/api/pull', %payload, :call-id($call)), $call);
+        }
+        my %res = $!http.post('/api/pull', %payload);
+        self.shape-response('pull', %res);
+    }
+
+    method delete-model(Str :$model!, :$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %res = $!http.delete('/api/delete', { model => $model });
+        self.shape-response('delete', %res);
+    }
+
+    method create-model(:$name!, :$modelfile!, :$path?, :$stream = False, :$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %payload = :$name, :$modelfile, :$path, :$stream;
+        my $call = self.call-id('create');
+        if $stream {
+            return $!parser.parse($!http.post-stream('/api/create', %payload, :call-id($call)), $call);
+        }
+        self.shape-response('create', $!http.post('/api/create', %payload));
+    }
+
+    method blob-exists(Str :$digest!, :$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %res = $!http.get("/api/blobs/sha256:$digest");
+        %res<status> && %res<status> == 200;
+    }
+
+    method create-blob(Str :$digest!, :$content!, :$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %res = $!http.post("/api/blobs/sha256:$digest", { content => $content });
+        self.shape-response('blob', %res);
+    }
+
+    method version(:$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %res = $!http.get('/api/version');
+        self.shape-response('version', %res);
+    }
+
+    multi method completion(Str:D $prompt, :$ensure-running = True) {
+        my %body = model => 'gemma3:1b', :$prompt, :!stream;
+        return self.completion(%body, :$ensure-running);
+    }
+
+    multi method completion(%params is copy, :$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %payload = $!normalizer.normalize('completion', %params);
+        my $stream = %payload<stream> // False;
+        my $call   = self.call-id('completion');
+        return self.do-chat-or-completion('/api/generate', %payload, $stream, $call);
+    }
+
+    method chat(%params is copy, :$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %payload = $!normalizer.normalize('chat', %params);
+        my $stream = %payload<stream> // False;
+        my $call   = self.call-id('chat');
+        return self.do-chat-or-completion('/api/chat', %payload, $stream, $call);
+    }
+
+    method embedding(%params is copy, :$ensure-running = True) {
+        self.ensure-ollama-running if $ensure-running;
+        my %payload = $!normalizer.normalize('embedding', %params);
+        %payload<input> //= %payload<text> if %payload<text>;
+        my $res = $!http.post('/api/embed', %payload);
+        if self.needs-model(%payload<model>, $res) {
+            self.pull-model(model => %payload<model>, :ensure-running);
+            $res = $!http.post('/api/embed', %payload);
+        }
+        self.shape-response('embedding', $res);
+    }
+
+    method models-local(:$ensure-running = True) {
+        self.list-models(:$ensure-running);
+    }
+
+    method models-chat() { <qwen2.5:7b llama3 chatgpt> } # stubbed helper
+    method models-embedding() { <nomic-embed-text all-minilm> }
+    method models-remote(:$type = 'all') { ["remote-$type list not implemented"] }
+
+    # Internal helpers
+    method do-chat-or-completion(Str $path, %payload, Bool $stream, Str $call) {
+        if $stream {
+            return $!parser.parse($!http.post-stream($path, %payload, :call-id($call)), $call);
+        }
+        my %res = $!http.post($path, %payload);
+        if self.needs-model(%payload<model>, %res) {
+            self.pull-model(model => %payload<model>, :ensure-running);
+            %res = $!http.post($path, %payload);
+        }
+        self.shape-response('chat', %res);
+    }
+
+    method needs-model($model, %res) {
+        my %decoded = %res<decoded-content> // {};
+        my $err = (%decoded<error> // '').lc;
+        (%res<status> && %res<status> == 404)
+            || $err.contains('not found')
+            || $err.contains('pull');
+    }
+
+    method shape-response(Str $kind, %res) {
+        return { error => %res<reason> // 'unknown error', status => %res<status> // 500 } unless %res<status> && %res<status> ~~ 200..299;
+        my %data = %res<decoded-content> // {};
+        given $kind {
+            when 'chat' | 'completion' {
+                my $content = %data<message><content> // %data<response> // '';
+                my $reasoning = %data<thinking> // %data<message><reasoning>;
+                my $shaped-content = $reasoning.defined ?? [ { Reasoning => $reasoning }, { Text => $content } ] !! $content;
+                my %result =
+                    Role         => %data<message><role> // 'assistant',
+                    Content      => $shaped-content,
+                    ToolRequests => %data<message><tool_calls>,
+                    Model        => %data<model>,
+                    Timestamp    => DateTime.now,
+                    FinishReason => %data<done_reason>,
+                    Usage        => {
+                        prompt     => %data<prompt_eval_count> // 0,
+                        completion => %data<eval_count> // 0,
+                    },
+                    Durations => WWW::Ollama::Utilities::to-seconds(%data),
+                    Throughput => WWW::Ollama::Utilities::throughput(%data),
+                ;
+                %result<Context> = %data<context> unless %result<Role>.defined;
+                return %result;
+            }
+            when 'embedding' {
+                return {
+                    Embeddings => %data<embeddings> // [],
+                    Model      => %data<model>,
+                    Timestamp  => DateTime.now,
+                    Usage      => { prompt => %data<prompt_eval_count> // 0 },
+                };
+            }
+            when 'models' { return %data<models> // [] }
+            default      { return %data }
+        }
+    }
+
+    method call-id($prefix) { "$prefix-" ~ DateTime.now.posix ~ "-" ~ (1000 + (rand * 100000).Int) }
+}
