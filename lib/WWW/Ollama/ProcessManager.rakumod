@@ -20,10 +20,10 @@ class WWW::Ollama::ProcessManager {
     method is-running() {
         try {
             my %res = $.http.get('/api/ps');
-            %res<status> && %res<status> == 200;
+            return %res<status> && %res<status> == 200;
         }
-        CATCH { False }
-        True;
+        #if $! { return False }
+        return False;
     }
 
     method ensure-running(:$use-system) {
