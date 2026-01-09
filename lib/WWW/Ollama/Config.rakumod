@@ -14,7 +14,7 @@ class WWW::Ollama::Config {
 
     method default-path() {
         my $home = $*HOME // IO::Path.new('.');
-        return $home.add('.raku-ollama-client.json');
+        return $home.add('.raku').add('ollama-client.json');
     }
 
     method default-config() {
