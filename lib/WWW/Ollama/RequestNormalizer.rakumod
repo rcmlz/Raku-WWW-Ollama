@@ -8,22 +8,26 @@ class WWW::Ollama::RequestNormalizer {
 
     method normalize(Str $kind, %params is copy) {
         my %payload = %params;
-        my %map = (
-        Model          => 'model',
-        Name           => 'name',
-        Messages       => 'messages',
-        Prompt         => 'prompt',
-        Input          => 'input',
-        Stream         => 'stream',
-        Tools          => 'tools',
-        ResponseFormat => 'format',
-        KeepAlive      => 'keep_alive',
-        Images         => 'images',
-        Modelfile      => 'modelfile',
-        Path           => 'path',
-        Reasoning      => 'think',
-        Suffix         => 'suffix',
-        );
+
+        my %map =
+            Model           => 'model',
+            Name            => 'name',
+            Messages        => 'messages',
+            Prompt          => 'prompt',
+            Input           => 'input',
+            Stream          => 'stream',
+            Tools           => 'tools',
+            ResponseFormat  => 'format',
+            response-format => 'format',
+            KeepAlive       => 'keep_alive',
+            keep-alive      => 'keep_alive',
+            Images          => 'images',
+            Modelfile       => 'modelfile',
+            Path            => 'path',
+            Reasoning       => 'think',
+            Suffix          => 'suffix',
+        ;
+
         for %map.kv -> $friendly, $api {
             if %payload{$friendly}:exists {
                 %payload{$api} = %payload{$friendly};
@@ -42,16 +46,25 @@ class WWW::Ollama::RequestNormalizer {
         }
 
         %payload<options> //= {};
-        my %option-map = (
-        ContextLength           => 'num_ctx',
-        Temperature             => 'temperature',
-        MaxTokens               => 'num_predict',
-        StopTokens              => 'stop',
-        TotalProbabilityCutoff  => 'top_p',
-        MinimumProbabilityCutoff=> 'min_p',
-        FrequencyPenalty        => 'repeat_penalty',
-        RandomSeed              => 'seed',
-        );
+        my %option-map =
+            ContextLength           => 'num_ctx',
+            context-length          => 'num_ctx',
+            Temperature             => 'temperature',
+            temperature             => 'temperature',
+            MaxTokens               => 'num_predict',
+            max-tokens              => 'num_predict',
+            StopTokens              => 'stop',
+            stop-tokens             => 'stop',
+            TotalProbabilityCutoff     => 'top_p',
+            total-probability-cutoff   => 'top_p',
+            MinimumProbabilityCutoff   => 'min_p',
+            minimum-probability-cutoff => 'min_p',
+            FrequencyPenalty        => 'repeat_penalty',
+            frequency-penalty       => 'repeat_penalty',
+            RandomSeed              => 'seed',
+            random-seed             => 'seed',
+        ;
+
         for %option-map.kv -> $friendly, $api {
             if %payload{$friendly}:exists {
                 my $val = %payload{$friendly};
