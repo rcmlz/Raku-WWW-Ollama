@@ -37,7 +37,7 @@ class WWW::Ollama::RequestNormalizer {
 
         given $kind {
             when 'chat' | 'completion' {
-                %payload<model> //= 'qwen2.5:7b';
+                %payload<model> //= 'gemma3:1b';
                 %payload<stream> //= False;
             }
             when 'embedding' {
@@ -169,7 +169,7 @@ class WWW::Ollama::RequestNormalizer {
 
     method model-context-length($model) {
         my %defaults = (
-        'qwen2.5:7b'        => 8192,
+        'gemma3:1b'        => 8192,
         'nomic-embed-text'  => 8192,
         );
         %defaults{$model} // 8192;
