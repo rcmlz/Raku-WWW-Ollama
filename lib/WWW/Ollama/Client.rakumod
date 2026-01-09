@@ -150,7 +150,7 @@ class WWW::Ollama::Client {
         my %payload = $!normalizer.normalize('completion', %params);
         my $stream = %payload<stream> // False;
         my $call   = self.call-id('completion');
-        return self.do-chat-or-completion('/api/generate', %payload, $stream, $call);
+        return self!do-chat-or-completion('/api/generate', %payload, $stream, $call);
     }
 
     #| Generate the next message in a chat with a provided model.
@@ -159,7 +159,7 @@ class WWW::Ollama::Client {
         my %payload = $!normalizer.normalize('chat', %params);
         my $stream = %payload<stream> // False;
         my $call   = self.call-id('chat');
-        return self.do-chat-or-completion('/api/chat', %payload, $stream, $call);
+        return self!do-chat-or-completion('/api/chat', %payload, $stream, $call);
     }
 
     #| Generate embeddings from a model.
@@ -168,7 +168,7 @@ class WWW::Ollama::Client {
         my %payload = $!normalizer.normalize('embedding', %params);
         %payload<input> //= %payload<text> if %payload<text>;
         my $res = $!http.post('/api/embed', %payload);
-        if self.needs-model(%payload<model>, $res) {
+        if self!needs-model(%payload<model>, $res) {
             self.pull-model(model => %payload<model>, :ensure-running);
             $res = $!http.post('/api/embed', %payload);
         }
@@ -179,24 +179,24 @@ class WWW::Ollama::Client {
         self.list-models(:$ensure-running);
     }
 
-    method models-chat() { <qwen2.5:7b llama3 chatgpt> } # stubbed helper
+    method models-chat() { <gemma3:1b llama3 qwen2.5:7b> } # stubbed helper
     method models-embedding() { <nomic-embed-text all-minilm> }
     method models-remote(:$type = 'all') { ["remote-$type list not implemented"] }
 
     # Internal helpers
-    method do-chat-or-completion(Str $path, %payload, Bool $stream, Str $call) {
+    method !do-chat-or-completion(Str $path, %payload, Bool $stream, Str $call) {
         if $stream {
             return $!parser.parse($!http.post-stream($path, %payload, :call-id($call)), $call);
         }
         my %res = $!http.post($path, %payload);
-        if self.needs-model(%payload<model>, %res) {
+        if self!needs-model(%payload<model>, %res) {
             self.pull-model(model => %payload<model>, :ensure-running);
             %res = $!http.post($path, %payload);
         }
         self.shape-response('chat', %res);
     }
 
-    method needs-model($model, %res) {
+    method !needs-model($model, %res) {
         my %decoded = %res<decoded-content> // {};
         my $err = (%decoded<error> // '').lc;
         (%res<status> && %res<status> == 404)
