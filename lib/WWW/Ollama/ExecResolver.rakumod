@@ -27,17 +27,17 @@ class WWW::Ollama::ExecResolver {
 
     method bundled-path() {
         my $os   = $*KERNEL.name.lc;
-        my $arch = (%*VM<config><cpu> // '').lc;
+        my $arch = ($*KERNEL.hardware // '').lc;
         my $dir  = do {
             if $os ~~ /win/        { 'Windows-x86-64' }
-            elsif $os ~~ /darwin/  { $arch eq 'aarch64' ?? 'MacOSX-ARM64' !! 'MacOSX-x86-64' }
-            elsif $os ~~ /macos/   { $arch eq 'aarch64' ?? 'MacOSX-ARM64' !! 'MacOSX-x86-64' }
-            elsif $os ~~ /linux/   { $arch eq 'aarch64' ?? 'Linux-ARM64'  !! 'Linux-x86-64' }
+            elsif $os ~~ /darwin/  { $arch eq 'arm64' ?? 'MacOSX-ARM64' !! 'MacOSX-x86-64' }
+            elsif $os ~~ /macos/   { $arch eq 'arm64' ?? 'MacOSX-ARM64' !! 'MacOSX-x86-64' }
+            elsif $os ~~ /linux/   { $arch eq 'arm64' ?? 'Linux-ARM64'  !! 'Linux-x86-64' }
             else                   { '' }
         };
         return Nil unless $dir.chars;
         my $binary = $*DISTRO.is-win ?? 'ollama.exe' !! 'ollama';
-        my $path = $!root.add('LibraryResources').add($dir).add($binary);
+        my $path = $!root.add('resources').add($dir).add($binary);
         $path if $path.e && $path.f;
     }
 
@@ -49,7 +49,7 @@ class WWW::Ollama::ExecResolver {
         if $use-system && $system.defined {
             return $system;
         }
-        if $bundled.defined {
+        with $bundled {
             return $bundled;
         }
         if $use-system && !$system.defined {
