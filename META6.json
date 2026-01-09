@@ -11,8 +11,7 @@
         "JSON::Fast:ver<0.17+>",
         "MIME::Base64:ver<1.2.3+>:auth<zef:raku-community-modules>",
         "Image::Markup::Utilities:ver<0.1.0+>:auth<zef:antononcube>",
-        "IO::Socket::SSL:ver<0.0.2+>",
-        "paths:ver<10.1>"
+        "IO::Socket::SSL:ver<0.0.2+>"
     ],
     "build-depends": [],
     "test-depends": [
@@ -43,5 +42,5 @@
         "web"
     ],
     "api": "0",
-    "source-url": "https://github.com/antononcube/Raku-WWW-Ollama"
+    "source-url": "https://github.com/antononcube/Raku-WWW-Ollama.git"
 }
