@@ -35,7 +35,8 @@ For detailed usage examples see:
 ## TODO
 
 - [ ] TODO Implementation
-  - [ ] TODO Reasonable gists for the different objects.
+  - [X] DONE Reasonable gists for the different objects.
+  - [ ] TODO Refactor to simpler code
 - [ ] TODO CLI
 - [ ] TODO Unit tests
 - [ ] TODO Documentation
