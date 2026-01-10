@@ -1,7 +1,7 @@
 {
     "name": "WWW::Ollama",
     "description": "WWW::Ollama provides access to the Ollama models (https://ollama.com).",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "authors": [
         "Anton Antonov"
     ],
