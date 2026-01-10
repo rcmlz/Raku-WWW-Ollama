@@ -213,28 +213,28 @@ class WWW::Ollama::Client {
                 my $reasoning = %data<thinking> // %data<message><reasoning>;
                 my $shaped-content = $reasoning.defined ?? [ { Reasoning => $reasoning }, { Text => $content } ] !! $content;
                 my %result =
-                    Role         => %data<message><role> // 'assistant',
-                    Content      => $shaped-content,
-                    ToolRequests => %data<message><tool_calls>,
-                    Model        => %data<model>,
-                    Timestamp    => DateTime.now,
-                    FinishReason => %data<done_reason>,
-                    Usage        => {
+                    role          => %data<message><role> // 'assistant',
+                    content       => $shaped-content,
+                    tool-requests => %data<message><tool_calls>,
+                    model         => %data<model>,
+                    timestamp     => DateTime.now,
+                    finish-reason => %data<done_reason>,
+                    usage         => {
                         prompt     => %data<prompt_eval_count> // 0,
                         completion => %data<eval_count> // 0,
                     },
-                    Durations => WWW::Ollama::Utilities::to-seconds(%data),
-                    Throughput => WWW::Ollama::Utilities::throughput(%data),
+                    durations     => WWW::Ollama::Utilities::to-seconds(%data),
+                    throughput    => WWW::Ollama::Utilities::throughput(%data),
                 ;
-                %result<Context> = %data<context> unless %result<Role>.defined;
+                %result<context> = %data<context> unless %result<role>.defined;
                 return %result;
             }
             when 'embedding' {
                 return {
-                    Embeddings => %data<embeddings> // [],
-                    Model      => %data<model>,
-                    Timestamp  => DateTime.now,
-                    Usage      => { prompt => %data<prompt_eval_count> // 0 },
+                    embeddings => %data<embeddings> // [],
+                    model      => %data<model>,
+                    timestamp  => DateTime.now,
+                    usage      => { prompt => %data<prompt_eval_count> // 0 },
                 };
             }
             when 'models' { return %data<models> // [] }
