@@ -4,7 +4,7 @@ use v6.d;
 use WWW::Ollama::Client;
 
 #my $ollama = WWW::Ollama::Client.new(host => 'localhost', :11434port);
-my $ollama = WWW::Ollama::Client.new;
+my $ollama = WWW::Ollama::Client.new(:ensure-running);
 
 say (:$ollama);
 
