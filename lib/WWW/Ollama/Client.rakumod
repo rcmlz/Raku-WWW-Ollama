@@ -211,7 +211,7 @@ class WWW::Ollama::Client {
             when 'chat' | 'completion' {
                 my $content = %data<message><content> // %data<response> // '';
                 my $reasoning = %data<thinking> // %data<message><reasoning>;
-                my $shaped-content = $reasoning.defined ?? [ { Reasoning => $reasoning }, { Text => $content } ] !! $content;
+                my $shaped-content = $reasoning.defined ?? [ { reasoning => $reasoning }, { text => $content } ] !! $content;
                 my %result =
                     role          => %data<message><role> // 'assistant',
                     content       => $shaped-content,
