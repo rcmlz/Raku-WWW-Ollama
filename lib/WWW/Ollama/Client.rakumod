@@ -20,7 +20,8 @@ class WWW::Ollama::Client {
 
     submethod BUILD(:$host, :$port, :$use-system-ollama, :$start-ollama,
                     Bool:D :$echo = False,
-                    Bool:D :$!ensure-running = False
+                    Bool:D :$!ensure-running = False,
+                    :auth-key(:$api-key) = Whatever
                     ) {
         $!config //= WWW::Ollama::Config.new;
         $!config.set({'host' => $host}) if $host;
@@ -32,6 +33,7 @@ class WWW::Ollama::Client {
         $!http //= WWW::Ollama::HTTPClient.new(
             host => $!config.get('host', '127.0.0.1'),
             port => $!config.get('port', 11435),
+            :$api-key
         );
 
         $!resolver //= WWW::Ollama::ExecResolver.new(:$!config);
