@@ -20,7 +20,7 @@ class WWW::Ollama::Config {
     method default-config() {
         return {
             host               => '127.0.0.1',
-            port               => 11435,
+            port               => 11434,
             use-system-ollama  => True,
             start-ollama       => True,
             context-length     => Nil,

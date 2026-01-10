@@ -23,18 +23,14 @@ class WWW::Ollama::Client {
                     Bool:D :$!ensure-running = False,
                     :auth-key(:$api-key) = Whatever
                     ) {
+        $!http //= WWW::Ollama::HTTPClient.new(:$host, :$port, :$api-key);
+
         $!config //= WWW::Ollama::Config.new;
-        $!config.set({'host' => $host}) if $host;
-        $!config.set({'port' => $port}) if $port.defined;
+        $!config.set({'host' => $!http.host});
+        $!config.set({'port' => $!http.port});
         $!config.set({'use-system-ollama' => $use-system-ollama}) if $use-system-ollama.defined;
         $!config.set({'start-ollama' => $start-ollama}) if $start-ollama.defined;
         $!config.set({:$echo});
-
-        $!http //= WWW::Ollama::HTTPClient.new(
-            host => $!config.get('host', '127.0.0.1'),
-            port => $!config.get('port', 11435),
-            :$api-key
-        );
 
         $!resolver //= WWW::Ollama::ExecResolver.new(:$!config);
         $!normalizer //= WWW::Ollama::RequestNormalizer.new(:$!http);
@@ -50,13 +46,13 @@ class WWW::Ollama::Client {
     multi method host() { $!http.host }
     multi method host(Str $value) {
         $!http.host = $value;
-        $!config.set(host => $value);
+        $!config.set({host => $value});
     }
 
     multi method port() { $!http.port }
     multi method port(Int $value) {
         $!http.port = $value;
-        $!config.set(port => $value);
+        $!config.set({port => $value});
     }
 
     multi method use-system-ollama() { $!resolver.use-system }
@@ -273,12 +269,13 @@ class WWW::Ollama::Client {
 
     #| To gist
     multi method gist(::?CLASS:D:-->Str) {
+        my $ollama-is-running = self.ollama-is-running;
         my @spec =
                 base-url => $!http.base-url,
-                ollama-is-running => self.ollama-is-running,
+                :$ollama-is-running,
                 |self.version,
-                models-in-memory => self.list-running-models.elems,
-                local-models => self.list-models.elems;
+                models-in-memory => $ollama-is-running ?? self.list-running-models.elems !! 0,
+                local-models => $ollama-is-running ?? self.list-models.elems !! 0;
                 #status => self.status<response>;
         return 'WWW::Ollama::Client' ~ @spec.List.raku;
     }

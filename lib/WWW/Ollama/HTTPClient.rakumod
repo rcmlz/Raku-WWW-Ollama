@@ -6,16 +6,46 @@ use WWW::Ollama::Utilities;
 
 # Thin HTTP helper; supports JSON requests and streaming via curl for simplicity.
 class WWW::Ollama::HTTPClient {
-    has Str $.host is rw;
-    has Int $.port is rw;
+    has $.scheme is rw = Whatever;
+    has $.host is rw = Whatever;
+    has $.port is rw = Whatever;
     has $.api-key is rw = Whatever;
 
-    method host-port() { "$!host:$!port" }
-    method base-url()  { "http://{self.host-port}" }
+    #------------------------------------------------------
+    # Creators
+    #------------------------------------------------------
+    submethod BUILD(:$!host = Whatever, :$!port = Whatever, :$!scheme = Whatever, :$!api-key = Whatever) {
+        without $!host { $!host = '127.0.0.1' }
+        die "The host spec is expected to be a string or Whatever" unless $!host ~~ Str:D;
+        say (:$!scheme, :$!host, :$!port);
+        without $!port {
+            $!port = do given $!host {
+                $!port = do when $_ ~~ /^ 'https://' / {
+                    $!scheme = 'https';
+                    443
+                }
+                when $_ ~~ /^ 'http://' / {
+                    $!scheme = 'http';
+                    80
+                }
+                default {
+                    11434
+                }
+            }
+        }
+        say (:$!scheme, :$!host, :$!port);
+        $!scheme //= 'http';
+        $!host .= subst( $!scheme ~ '://');
+        say (:$!scheme, :$!host, :$!port);
+    }
 
     #------------------------------------------------------
     # API methods
     #------------------------------------------------------
+    method base-url() {
+        "{$!scheme}://{$!host}:{$!port}"
+    }
+
     method get(Str:D $path, :%headers = {}) {
         my $response = HTTP::Tiny.new.get(self.base-url ~ $path);
         # Does headers .get take headers argument?
