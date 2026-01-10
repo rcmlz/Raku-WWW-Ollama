@@ -16,8 +16,12 @@ class WWW::Ollama::Client {
     has WWW::Ollama::RequestNormalizer $.normalizer;
     has WWW::Ollama::StreamingParser $.parser .= new;
     has WWW::Ollama::ProcessManager $.process handles <start stop>;
+    has Bool:D $.ensure-running is rw = False;
 
-    submethod BUILD(:$host, :$port, :$use-system-ollama, :$start-ollama, Bool:D :$echo = False) {
+    submethod BUILD(:$host, :$port, :$use-system-ollama, :$start-ollama,
+                    Bool:D :$echo = False,
+                    Bool:D :$!ensure-running = False
+                    ) {
         $!config //= WWW::Ollama::Config.new;
         $!config.set({'host' => $host}) if $host;
         $!config.set({'port' => $port}) if $port.defined;
@@ -60,35 +64,35 @@ class WWW::Ollama::Client {
     method ensure-ollama-running(:$use-system) { $!process.ensure-running(:$use-system) }
 
     # API wrappers
-    method status(:$ensure-running = True) {
+    method status(:$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %res = $!http.get('');
         return %res<decoded-content> // %res<status> // "Can't process http request.";
     }
 
     #| List models that are currently loaded into memory.
-    method list-running-models(:$ensure-running = True) {
+    method list-running-models(:$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %res = $!http.get('/api/ps');
         self.shape-response('models', %res);
     }
 
     #| List models that are available locally.
-    method list-models(:$ensure-running = True) {
+    method list-models(:$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %res = $!http.get('/api/tags');
         self.shape-response('models', %res);
     }
 
     #| Show information about a model including details, modelfile, template, parameters, license, system prompt.
-    method model-info(Str :$model!, :$verbose = False, :$ensure-running = True) {
+    method model-info(Str :$model!, :$verbose = False, :$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %res = $!http.post('/api/show', { model => $model, verbose => $verbose });
         self.shape-response('model-info', %res);
     }
 
     #| Download a model from the ollama library.
-    method pull-model(Str :$model!, :$stream = False, :$ensure-running = True) {
+    method pull-model(Str :$model!, :$stream = False, :$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %payload = :$model, :$stream;
         if $stream {
@@ -100,14 +104,14 @@ class WWW::Ollama::Client {
     }
 
     #| Delete a model and its data.
-    method delete-model(Str :$model!, :$ensure-running = True) {
+    method delete-model(Str :$model!, :$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %res = $!http.delete('/api/delete', { model => $model });
         self.shape-response('delete', %res);
     }
 
     #| Create a model from: another model, a safetensors directory, or a GGUF file.
-    method create-model(:$name!, :$modelfile!, :$path?, :$stream = False, :$ensure-running = True) {
+    method create-model(:$name!, :$modelfile!, :$path?, :$stream = False, :$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %payload = :$name, :$modelfile, :$path, :$stream;
         my $call = self.call-id('create');
@@ -118,34 +122,34 @@ class WWW::Ollama::Client {
     }
 
     #| Check if a blob exists.
-    method blob-exists(Str :$digest!, :$ensure-running = True) {
+    method blob-exists(Str :$digest!, :$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %res = $!http.get("/api/blobs/sha256:$digest");
         %res<status> && %res<status> == 200;
     }
 
     #| Create a blob exists.
-    method create-blob(Str :$digest!, :$content!, :$ensure-running = True) {
+    method create-blob(Str :$digest!, :$content!, :$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %res = $!http.post("/api/blobs/sha256:$digest", { content => $content });
         self.shape-response('blob', %res);
     }
 
     #| Retrieve the Ollama version.
-    method version(:$ensure-running = True) {
+    method version(:$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %res = $!http.get('/api/version');
         self.shape-response('version', %res);
     }
 
     #| Generate a completion.
-    multi method completion(Str:D $prompt, :$ensure-running = True) {
+    multi method completion(Str:D $prompt, :$ensure-running = $!ensure-running) {
         my %body = model => 'gemma3:1b', :$prompt, :!stream;
         return self.completion(%body, :$ensure-running);
     }
 
     #| Generate a completion response for a given prompt with a provided model.
-    multi method completion(%params is copy, :$ensure-running = True) {
+    multi method completion(%params is copy, :$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %payload = $!normalizer.normalize('completion', %params);
         my $stream = %payload<stream> // False;
@@ -154,7 +158,7 @@ class WWW::Ollama::Client {
     }
 
     #| Generate the next message in a chat with a provided model.
-    method chat(%params is copy, :$ensure-running = True) {
+    method chat(%params is copy, :$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %payload = $!normalizer.normalize('chat', %params);
         my $stream = %payload<stream> // False;
@@ -163,7 +167,7 @@ class WWW::Ollama::Client {
     }
 
     #| Generate embeddings from a model.
-    method embedding(%params is copy, :$ensure-running = True) {
+    method embedding(%params is copy, :$ensure-running = $!ensure-running) {
         self.ensure-ollama-running if $ensure-running;
         my %payload = $!normalizer.normalize('embedding', %params);
         %payload<input> //= %payload<text> if %payload<text>;
@@ -175,7 +179,7 @@ class WWW::Ollama::Client {
         self.shape-response('embedding', $res);
     }
 
-    method models-local(:$ensure-running = True) {
+    method models-local(:$ensure-running = $!ensure-running) {
         self.list-models(:$ensure-running);
     }
 
