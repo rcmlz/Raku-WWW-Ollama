@@ -9,35 +9,43 @@ my %*SUB-MAIN-OPTS = :named-anywhere;
 #| Ollama client invocation.
 sub MAIN(
         *@words,
-        Str :$path = 'completion',          #= Path, one of 'completion', 'chat', 'embedding', 'model-info', 'list-models', or 'list-running-models'.
-        Str :$model = 'gemma3:1b',          #= Model to use.
+        Str :$path = 'completion',              #= Path, one of 'completion', 'chat', 'embedding', 'model-info', 'list-models', or 'list-running-models'.
+        Str :m(:$model) is copy = 'gemma3:1b',  #= Model to use.
+        Str :f(:$format) is copy = 'Whatever',  #= Format of the result; one of "json", "hash", "values", or "Whatever".
          ) {
+
+    if $model.lc ∈ <whatever auto automatic> { $model = 'gemma3:1b' }
+    if $format.lc ∈ <v value auto whatever> { $format = 'values' }
 
     my $ollama = WWW::Ollama::Client.new;
 
+    my $ans;
     given $path {
         when $_ ∈ <list-models models> {
-            my $ans = |$ollama.list-models;
-            say to-json($ans, :pretty);
+            $ans = |$ollama.list-models;
         }
         when $_ ∈ <model-info> {
-            my $ans = $ollama.model-info(:$model);
-            say to-json($ans, :pretty);
+            $ans = $ollama.model-info(:$model);
         }
         when $_ ∈ <completion generation> {
             my %body = :$model, prompt => @words.join(' '), :!stream;
-            my $ans = $ollama.completion(%body);
-            say to-json($ans, :pretty);
+            $ans = $ollama.completion(%body);
         }
         when $_ ∈ <chat chat-completion> {
             # TODO Check for valid JSON message input and/or JSON file.
             my %body = :$model,
-                       messages => [{role => "user", content => "How many people live in Brazil?"},];
-            my $ans = $ollama.chat(%body);
-            say to-json($ans, :pretty);
+                       messages => [{role => "user", content => @words.join(' ')},];
+            $ans = $ollama.chat(%body);
         }
         default {
-            die 'Do not know how to process the --path argument.'
+            die 'Do not know how to process the value of the --path argument.'
         }
+    }
+
+    say do given $format.lc {
+        when $_ ∈ <hash raku> { $ans.raku }
+        when $_ eq 'values' { $ans<content> }
+        when $_ eq 'json' { to-json($ans, :pretty) }
+        default { $ans }
     }
 }
