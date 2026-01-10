@@ -2,8 +2,6 @@ use v6.d;
 
 unit module WWW::Ollama::Utilities;
 
-use paths;
-
 # Locate an executable on PATH (with simple platform awareness).
 our sub find-in-path(Str:D $name) {
     return IO::Path.new($name) if IO::Path.new($name).e && IO::Path.new($name).f;
