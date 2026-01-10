@@ -20,7 +20,7 @@ sub MAIN(
     my $ollama = WWW::Ollama::Client.new;
 
     my $ans;
-    given $path {
+    given $path.lc {
         when $_ ∈ <list-models models> {
             $ans = |$ollama.list-models;
         }
@@ -30,6 +30,10 @@ sub MAIN(
         when $_ ∈ <completion generation> {
             my %body = :$model, prompt => @words.join(' '), :!stream;
             $ans = $ollama.completion(%body);
+        }
+        when $_ ∈ <embed embedding embeddings> {
+            my %body = :$model, input => @words;
+            $ans = $ollama.embedding(%body);
         }
         when $_ ∈ <chat chat-completion> {
             # TODO Check for valid JSON message input and/or JSON file.
@@ -44,7 +48,9 @@ sub MAIN(
 
     say do given $format.lc {
         when $_ ∈ <hash raku> { $ans.raku }
-        when $_ eq 'values' { $ans<content> }
+        when $_ eq 'values' {
+            $path ~~ /embed/ ?? $ans<embeddings> !! $ans<content>
+        }
         when $_ eq 'json' { to-json($ans, :pretty) }
         default { $ans }
     }
