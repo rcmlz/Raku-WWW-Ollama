@@ -48,12 +48,6 @@ ollama-client --help
 
 -----
 
-## Implementation details
-
-The main class of the package is `WWW::Ollama::Client`.
-
------
-
 ## TODO
 
 - [ ] TODO Implementation
