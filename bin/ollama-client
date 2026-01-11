@@ -2,7 +2,6 @@
 use v6.d;
 
 use WWW::Ollama;
-use JSON::Fast;
 
 my %*SUB-MAIN-OPTS = :named-anywhere;
 
