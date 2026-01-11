@@ -62,9 +62,9 @@ ollama-client --help
     - [X] DONE Initialize the client with an API key and use that key
     - [ ] TODO Pass & use an API key per client method call 
     - [ ] TODO Automatic discovery and use of OLLAMA_API_KEY 
-  - [ ] TODO Refactor to simpler code
-  - [ ] TODO Functional interface 
+  - [X] DONE Functional interface 
     - I.e. without the need to explicitly make a client object.
+  - [ ] TODO Refactor to simpler code
 - [ ] TODO CLI
   - [X] DONE MVP
   - [ ] TODO Detect JSON file with valid chat records
