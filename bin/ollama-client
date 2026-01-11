@@ -1,7 +1,7 @@
 #!/usr/bin/env raku
 use v6.d;
 
-use WWW::Ollama::Client;
+use WWW::Ollama;
 use JSON::Fast;
 
 my %*SUB-MAIN-OPTS = :named-anywhere;
@@ -10,48 +10,24 @@ my %*SUB-MAIN-OPTS = :named-anywhere;
 sub MAIN(
         *@words,
         Str :$path = 'completion',              #= Path, one of 'completion', 'chat', 'embedding', 'model-info', 'list-models', or 'list-running-models'.
-        Str :m(:$model) is copy = 'gemma3:1b',  #= Model to use.
+        Str :m(:$model) is copy = 'Whatever',   #= Model to use.
         Str :f(:$format) is copy = 'Whatever',  #= Format of the result; one of "json", "hash", "values", or "Whatever".
          ) {
 
     if $model.lc ∈ <whatever auto automatic> { $model = 'gemma3:1b' }
     if $format.lc ∈ <v value auto whatever> { $format = 'values' }
 
-    my $ollama = WWW::Ollama::Client.new;
+    # TODO Check for valid JSON message input and/or JSON file if $path ∈ <chat chat-completion>
 
-    my $ans;
-    given $path.lc {
-        when $_ ∈ <list-models models> {
-            $ans = |$ollama.list-models;
-        }
-        when $_ ∈ <model-info> {
-            $ans = $ollama.model-info(:$model);
-        }
-        when $_ ∈ <completion generation> {
-            my %body = :$model, prompt => @words.join(' '), :!stream;
-            $ans = $ollama.completion(%body);
-        }
-        when $_ ∈ <embed embedding embeddings> {
-            my %body = :$model, input => @words;
-            $ans = $ollama.embedding(%body);
-        }
-        when $_ ∈ <chat chat-completion> {
-            # TODO Check for valid JSON message input and/or JSON file.
-            my %body = :$model,
-                       messages => [{role => "user", content => @words.join(' ')},];
-            $ans = $ollama.chat(%body);
-        }
-        default {
-            die 'Do not know how to process the value of the --path argument.'
-        }
-    }
+    my $res =
+            ollama-client(
+            @words.join(' '),
+            :$path,
+            model => $model.lc eq 'whatever' ?? Whatever !! $model,
+            format => $format.lc eq 'whatever' ?? Whatever !! $format,
+            client => Whatever
+            );
 
-    say do given $format.lc {
-        when $_ ∈ <hash raku> { $ans.raku }
-        when $_ eq 'values' {
-            $path ~~ /embed/ ?? $ans<embeddings> !! $ans<content>
-        }
-        when $_ eq 'json' { to-json($ans, :pretty) }
-        default { $ans }
-    }
+    if $format.lc ∈ <hash raku> { $res .= raku }
+    say $res;
 }
