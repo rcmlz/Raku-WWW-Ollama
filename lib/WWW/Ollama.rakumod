@@ -19,7 +19,8 @@ multi sub ollama-client(
         Str:D :kind(:$path) is copy = 'chat',
         :m(:$model) is copy = Whatever,
         :f(:$format) is copy = Whatever,
-        :$client is copy = Whatever
+        :$client is copy = Whatever,
+        *%args
                         ) {
     # Process model
     if $model.isa(Whatever) { $model = $path.lc ∈ <embed embedding embeddings> ?? 'nomic-embed-text' !! 'gemma3:1b' }
@@ -46,11 +47,11 @@ multi sub ollama-client(
             $ans = $client.model-info(:$model)
         }
         when $_ ∈ <completion generation> {
-            my %body = :$model, prompt => $input, :!stream;
+            my %body = :$model, prompt => $input, :!stream, |%args;
             $ans = $client.completion(%body);
         }
         when $_ ∈ <embed embedding embeddings> {
-            my %body = :$model, :$input;
+            my %body = :$model, :$input, |%args;
             $ans = $client.embedding(%body);
         }
         when $_ ∈ <chat chat-completion> {
@@ -68,7 +69,7 @@ multi sub ollama-client(
                 }
             }
 
-            my %body = :$model, :@messages;
+            my %body = :$model, :@messages, |%args;
             $ans = $client.chat(%body)
         }
         default {
@@ -95,10 +96,10 @@ sub ollama-model-info(:$model = Whatever, :$format = Whatever, :$client = Whatev
     return ollama-client('', path => 'model-info', :$model, :$format, :$client);
 }
 
-sub ollama-completion($input, :$model = Whatever, :$format = Whatever, :$client = Whatever) is export {
-    return ollama-client($input, path => 'completion', :$model, :$format, :$client);
+sub ollama-completion($input, :$model = Whatever, :$format = Whatever, :$client = Whatever, *%args) is export {
+    return ollama-client($input, path => 'completion', :$model, :$format, :$client, |%args);
 }
 
-sub ollama-chat-completion($input, :$model = Whatever, :$format = Whatever, :$client = Whatever) is export {
-    return ollama-client($input, path => 'chat', :$model, :$format, :$client);
+sub ollama-chat-completion($input, :$model = Whatever, :$format = Whatever, :$client = Whatever, *%args) is export {
+    return ollama-client($input, path => 'chat', :$model, :$format, :$client, |%args);
 }
